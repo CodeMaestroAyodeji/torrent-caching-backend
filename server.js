@@ -19,6 +19,7 @@ const paypalRoutes = require('./routes/paypal');
 const paystackRoutes = require('./routes/paystack');
 const flutterwaveRoutes = require('./routes/flutterwave');
 
+console.log('NODE_ENV:', process.env.NODE_ENV);
 // Load environment variables
 dotenv.config();
 
