@@ -14,10 +14,11 @@ const authRoutes = require('./routes/auth');
 const torrentRoutes = require('./routes/torrent');
 const adminRoutes = require('./routes/admin');
 const userProfileRoutes = require('./routes/userProfile');
-const subscriptionRoutes = require('./routes/subscription');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const paypalRoutes = require('./routes/paypal');
 const paystackRoutes = require('./routes/paystack');
 const flutterwaveRoutes = require('./routes/flutterwave');
+const publicUrl = require('./routes/publicUrl');
 
 console.log('NODE_ENV:', process.env.NODE_ENV);
 // Load environment variables
@@ -55,6 +56,7 @@ connectDB()
     app.use('/api/paystack', paystackRoutes);
     app.use('/api/flutterwave', flutterwaveRoutes);
     app.use('/api/users/', userProfileRoutes);
+    app.use('/api/', publicUrl);
 
     // Error handling middleware (put this last)
     app.use(errorHandler);

@@ -1,74 +1,101 @@
 // controllers/subscriptionController.js
 
 const User = require('../models/User');
-const { validatePlan } = require('../utils/validators');
-const Stripe = require('stripe');
+const SubscriptionService = require('../services/SubscriptionService');
+const PaymentService = require('../services/paymentService');
+const Transaction = require('../models/Transaction');
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-// Create Checkout Session for Subscription
-exports.createCheckoutSession = async (req, res) => {
-  const { plan } = req.body;
-  
-  // Validate plan
-  const { error } = validatePlan(plan);
-  if (error) return res.status(400).json({ error: error.details[0].message });
-
+exports.getPlans = async (req, res) => {
   try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'subscription',
-      line_items: [
-        {
-          price: plan === 'premium' ? process.env.STRIPE_PREMIUM_PLAN_ID : null,
-          quantity: 1,
-        },
-      ],
-      success_url: `${process.env.FRONTEND_DEV_URL}/subscription/success`,
-      cancel_url: `${process.env.FRONTEND_DEV_URL}/subscription/cancel`,
-    });
-
-    return res.status(201).json({ url: session.url });
+    const plans = await SubscriptionService.getActivePlans();
+    res.json(plans);
   } catch (error) {
-    console.error('Stripe session creation error:', error.message);
-    return res.status(500).json({ error: 'Internal server error. Try again later.' });
+    res.status(500).json({ error: 'Failed to fetch subscription plans' });
   }
 };
 
-
-// Handle Webhook for Payment Success
-exports.handleWebhook = async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
+exports.initiatePayment = async (req, res) => {
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    const { planId, gateway, currency, cardDetails } = req.body;
+    const user = req.user;
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const user = await User.findOne({ email: session.customer_email });
-
-      if (!user) {
-        console.warn('User not found for email:', session.customer_email);
-        return res.status(404).json({ error: 'User not found.' });
-      }
-
-      // Update user subscription
-      user.subscription = 'premium';
-      user.subscriptionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-      await user.save();
+    if (!planId || !gateway || !currency) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    res.status(200).json({ received: true });
+    const plan = await SubscriptionService.getPlanById(planId);
+    if (!plan) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
+
+    let paymentResponse;
+    try {
+      paymentResponse = await PaymentService.initiatePayment(
+        user,
+        plan,
+        currency,
+        gateway,
+        cardDetails // Pass card details for Flutterwave
+      );
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Create transaction record
+    const transaction = await Transaction.create({
+      user: user._id,
+      plan: plan._id,
+      amount: plan.prices[currency.toLowerCase()].amount,
+      currency: currency,
+      paymentMethod: gateway,
+      paymentId: paymentResponse.paymentId,
+      status: 'pending'
+    });
+
+    res.json({
+      ...paymentResponse,
+      transactionId: transaction._id
+    });
   } catch (error) {
-    console.error('Webhook error:', error.message);
-    return res.status(400).send(`Webhook Error: ${error.message}`);
+    res.status(500).json({ error: error.message });
   }
 };
 
+exports.verifyPayment = async (req, res) => {
+  try {
+    const { paymentId, gateway } = req.body;
+    
+    const transaction = await Transaction.findOne({ paymentId });
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
 
+    const verificationResult = await PaymentService.verifyPayment(paymentId, gateway);
+    
+    if (verificationResult.status === 'successful' || verificationResult.status === 'completed') {
+      // Update transaction status
+      transaction.status = 'completed';
+      await transaction.save();
 
+      // Update user subscription
+      const plan = await SubscriptionService.getPlanById(transaction.plan);
+      const expiryDate = new Date(Date.now() + plan.duration * 24 * 60 * 60 * 1000);
+      await SubscriptionService.updateUserSubscription(transaction.user, transaction.plan, expiryDate);
+
+      return res.json({ message: 'Payment verified successfully' });
+    }
+
+    res.status(400).json({ error: 'Payment verification failed' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getUserSubscription = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('subscription subscriptionExpiry');
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch subscription details' });
+  }
+};

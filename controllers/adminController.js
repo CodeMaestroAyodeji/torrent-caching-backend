@@ -98,14 +98,41 @@ exports.updatePlan = async (req, res) => {
 
 // Create a new subscription plan
 exports.createPlan = async (req, res) => {
-  const { name, price, limits } = req.body;
-
   try {
-    const newPlan = new SubscriptionPlan({ name, price, limits });
+    const { name, prices, duration, limits, features, isActive } = req.body;
+
+    // Validate required fields
+    if (!name || !prices || !limits) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Validate prices structure
+    if (!prices.usd || !prices.ngn || 
+        typeof prices.usd.amount !== 'number' || 
+        typeof prices.ngn.amount !== 'number') {
+      return res.status(400).json({ error: 'Invalid price structure' });
+    }
+
+    // Create new plan
+    const newPlan = new SubscriptionPlan({
+      name,
+      prices,
+      duration: duration || 30,
+      limits,
+      features: features || [],
+      isActive: isActive ?? true
+    });
+
     await newPlan.save();
 
-    res.json({ message: 'Plan created successfully.' });
+    res.status(201).json({
+      message: 'Plan created successfully',
+      plan: newPlan
+    });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Plan with this name already exists' });
+    }
     res.status(500).json({ error: error.message });
   }
 };

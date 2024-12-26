@@ -2,37 +2,54 @@
 
 const mongoose = require('mongoose');
 
+const priceSchema = new mongoose.Schema({
+  amount: {
+    type: Number,
+    required: true,
+    min: 0
+  }
+});
+
 const SubscriptionPlanSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
     unique: true,
+    enum: ['free', 'premium', 'unlimited']
   },
-  price: {
+  prices: {
+    usd: priceSchema,
+    ngn: priceSchema
+  },
+  duration: {
     type: Number,
     required: true,
+    default: 30 // Duration in days
   },
   limits: {
     downloads: {
       type: Number,
       required: true,
-      default: 0, // Number of downloads allowed
+      default: 0
     },
     speed: {
       type: Number,
       required: true,
-      default: 0, // Download speed limit in Mbps
+      default: 0
     },
     storage: {
       type: Number,
       required: true,
-      default: 0, // Storage limit in GB
-    },
+      default: 0
+    }
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  features: [{
+    type: String
+  }],
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, { timestamps: true });
 
 module.exports = mongoose.model('SubscriptionPlan', SubscriptionPlanSchema);
