@@ -1,18 +1,12 @@
 // controllers/subscriptionController.js
 
+// controllers/subscriptionController.js
+
 const User = require('../models/User');
 const { SubscriptionPlan } = require("../models/SubscriptionPlan");
 const PaymentService = require('../services/paymentService');
+const SubscriptionService = require('../services/subscriptionService');
 const Transaction = require('../models/Transaction');
-
-exports.getPlans = async (req, res) => {
-  try {
-    const plans = await SubscriptionService.getActivePlans();
-    res.json(plans);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch subscription plans' });
-  }
-};
 
 exports.initiatePayment = async (req, res) => {
   try {
@@ -23,7 +17,7 @@ exports.initiatePayment = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const plan = await SubscriptionService.getPlanById(planId);
+    const plan = await SubscriptionPlan.findById(planId); // Updated to use SubscriptionPlan.findById
     if (!plan) {
       return res.status(404).json({ error: 'Plan not found' });
     }
@@ -78,7 +72,7 @@ exports.verifyPayment = async (req, res) => {
       await transaction.save();
 
       // Update user subscription
-      const plan = await SubscriptionService.getPlanById(transaction.plan);
+      const plan = await SubscriptionPlan.findById(transaction.plan); // Updated to use SubscriptionPlan.findById
       const expiryDate = new Date(Date.now() + plan.duration * 24 * 60 * 60 * 1000);
       await SubscriptionService.updateUserSubscription(transaction.user, transaction.plan, expiryDate);
 
@@ -100,37 +94,36 @@ exports.getUserSubscription = async (req, res) => {
   }
 };
 
-
 exports.getPlans = async (req, res) => {
   try {
-      const plans = await SubscriptionPlan.find();
-      res.json(plans);
+    const plans = await SubscriptionPlan.find();
+    res.json(plans);
   } catch (error) {
-      res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
 exports.getCurrentSubscription = async (req, res) => {
   try {
-      const user = await User.findById(req.user.id);
-      if (!user) {
-          return res.status(404).json({ error: 'User not found' });
-      }
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-      // Get the user's current subscription plan details
-      const currentPlan = await SubscriptionPlan.findOne({ name: user.subscription });
-      
-      if (!currentPlan) {
-          return res.json(null);
-      }
+    // Get the user's current subscription plan details
+    const currentPlan = await SubscriptionPlan.findOne({ name: user.subscription });
+    
+    if (!currentPlan) {
+      return res.json(null);
+    }
 
-      const userSubscription = {
-          ...currentPlan.toObject(),
-          expiryDate: user.subscriptionExpiry
-      };
+    const userSubscription = {
+      ...currentPlan.toObject(),
+      expiryDate: user.subscriptionExpiry
+    };
 
-      res.json(userSubscription);
+    res.json(userSubscription);
   } catch (error) {
-      res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
