@@ -1,7 +1,7 @@
 // controllers/subscriptionController.js
 
 const User = require('../models/User');
-const SubscriptionService = require('../services/SubscriptionService');
+const { SubscriptionPlan } = require("../models/SubscriptionPlan");
 const PaymentService = require('../services/paymentService');
 const Transaction = require('../models/Transaction');
 
@@ -97,5 +97,40 @@ exports.getUserSubscription = async (req, res) => {
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch subscription details' });
+  }
+};
+
+
+exports.getPlans = async (req, res) => {
+  try {
+      const plans = await SubscriptionPlan.find();
+      res.json(plans);
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getCurrentSubscription = async (req, res) => {
+  try {
+      const user = await User.findById(req.user.id);
+      if (!user) {
+          return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get the user's current subscription plan details
+      const currentPlan = await SubscriptionPlan.findOne({ name: user.subscription });
+      
+      if (!currentPlan) {
+          return res.json(null);
+      }
+
+      const userSubscription = {
+          ...currentPlan.toObject(),
+          expiryDate: user.subscriptionExpiry
+      };
+
+      res.json(userSubscription);
+  } catch (error) {
+      res.status(500).json({ error: error.message });
   }
 };
