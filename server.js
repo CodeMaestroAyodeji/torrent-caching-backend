@@ -37,9 +37,6 @@ connectDB()
   .then(() => {
     const app = express();
     const server = http.createServer(app);
-
-    // Enable pre-flight requests for all routes
-    app.options('*', cors(corsConfig));
     
     // Apply CORS middleware with configuration
     app.use(cors(corsConfig));
