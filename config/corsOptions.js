@@ -8,3 +8,5 @@ const corsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 200 // Some legacy browsers (IE11) choke on 204
 };
+
+module.exports = corsOptions;
