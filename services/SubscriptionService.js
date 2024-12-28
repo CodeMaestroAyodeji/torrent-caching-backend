@@ -1,3 +1,5 @@
+// services/SubscriptionService.js
+
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
@@ -27,7 +29,14 @@ class SubscriptionService {
 
   async updateUserSubscription(userId, planId, expiryDate) {
     const user = await User.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
     const plan = await this.getPlanById(planId);
+    if (!plan) {
+      throw new Error('Plan not found');
+    }
     
     user.subscription = plan.name;
     user.subscriptionExpiry = expiryDate;
@@ -46,6 +55,23 @@ class SubscriptionService {
     } catch (error) {
       throw new Error(`Failed to create default plans: ${error.message}`);
     }
+  }
+
+  async getCurrentSubscription(userId) {
+    const user = await User.findById(userId).select('subscription subscriptionExpiry');
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (!user.subscription) {
+      return null;
+    }
+
+    const plan = await SubscriptionPlan.findOne({ name: user.subscription });
+    return {
+      ...plan.toObject(),
+      expiryDate: user.subscriptionExpiry
+    };
   }
 }
 

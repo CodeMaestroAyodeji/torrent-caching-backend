@@ -1,11 +1,10 @@
-// controllers/subscriptionController.js
 
 // controllers/subscriptionController.js
 
 const User = require('../models/User');
 const { SubscriptionPlan } = require("../models/SubscriptionPlan");
 const PaymentService = require('../services/paymentService');
-const SubscriptionService = require('../services/subscriptionService');
+const SubscriptionService = require('../services/SubscriptionService');
 const Transaction = require('../models/Transaction');
 
 exports.initiatePayment = async (req, res) => {

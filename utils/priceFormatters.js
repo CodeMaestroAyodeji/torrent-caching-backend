@@ -1,3 +1,5 @@
+// utils/priceFormatters.js
+
 /**
  * Formats price amount for payment gateways
  * @param {number} amount - The price amount

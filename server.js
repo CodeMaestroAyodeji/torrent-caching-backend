@@ -4,7 +4,8 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const http = require('http');
-const corsOptions = require('./config/corsOptions');
+const corsConfig = require('./config/corsOptions');
+const environment = require('./config/envConfig');
 const connectDB = require('./config/db');
 const logger = require('./middleware/logger');
 const { initializeWebSocket } = require('./websocket/websocketServer');
@@ -18,9 +19,11 @@ const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const paypalRoutes = require('./routes/paypal');
 const paystackRoutes = require('./routes/paystack');
 const flutterwaveRoutes = require('./routes/flutterwave');
-const publicUrl = require('./routes/publicUrl');
+const publicUrl = require('./routes/public');
 
-console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('Environment:', environment.NODE_ENV);
+console.log('Frontend URL:', environment.getCurrentFrontendUrl());
+
 // Load environment variables
 dotenv.config();
 
@@ -29,22 +32,28 @@ if (!process.env.NODE_ENV) {
   throw new Error('NODE_ENV not defined');
 }
 
-
-
 // Connect to the database
 connectDB()
   .then(() => {
     const app = express();
-    const server = http.createServer(app); // Create an HTTP server for both Express and WebSocket
+    const server = http.createServer(app);
 
-    // Middlewares
-    app.use(cors(corsOptions));
+    // Enable pre-flight requests for all routes
+    app.options('*', cors(corsConfig));
+    
+    // Apply CORS middleware with configuration
+    app.use(cors(corsConfig));
+    
     app.use(express.json());
     app.use(logger);
     
     // Test route
     app.get('/', (req, res) => {
-      res.json({ message: 'API is running...' });
+      res.json({ 
+        message: 'API is running...',
+        environment: environment.NODE_ENV,
+        frontendUrl: environment.getCurrentFrontendUrl()
+      });
     });
 
     // Routes
@@ -58,16 +67,16 @@ connectDB()
     app.use('/api/users/', userProfileRoutes);
     app.use('/api/', publicUrl);
 
-    // Error handling middleware (put this last)
+    // Error handling middleware
     app.use(errorHandler);
 
     // Initialize WebSocket server    
     WebSocketManager.initialize(server);
     initializeWebSocket(server);
 
-    // Start server
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    server.listen(environment.PORT, () => {
+      console.log(`Server running in ${environment.NODE_ENV} mode on port ${environment.PORT}`);
+    });
   })
   .catch((error) => {
     console.error('Failed to connect to the database:', error);

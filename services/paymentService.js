@@ -3,7 +3,8 @@
 const StripeProvider = require('./paymentProviders/StripeProvider');  
 const PayPalProvider = require('./paymentProviders/PayPalProvider');  
 const FlutterwaveProvider = require('./paymentProviders/FlutterwaveProvider');    
-const PaystackProvider = require('./paymentProviders/PaystackProvider');  
+const PaystackProvider = require('./paymentProviders/PaystackProvider'); 
+const SubscriptionService = require('./SubscriptionService');
 
 class PaymentService {  
   constructor() {  
