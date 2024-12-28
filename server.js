@@ -2,9 +2,8 @@
 
 const express = require('express');
 const dotenv = require('dotenv');
-const cors = require('cors');
 const http = require('http');
-const corsConfig = require('./config/corsOptions');
+const { corsMiddleware, handlePreflight } = require('./middleware/cors');
 const environment = require('./config/envConfig');
 const connectDB = require('./config/db');
 const logger = require('./middleware/logger');
@@ -38,9 +37,11 @@ connectDB()
     const app = express();
     const server = http.createServer(app);
     
-    // Apply CORS middleware with configuration
-    app.use(cors(corsConfig));
+    // Apply CORS middleware first
+    app.use(corsMiddleware);
+    app.use(handlePreflight);
     
+    // Other middleware
     app.use(express.json());
     app.use(logger);
     
@@ -52,6 +53,7 @@ connectDB()
         frontendUrl: environment.getCurrentFrontendUrl()
       });
     });
+
 
     // Routes
     app.use('/api/auth', authRoutes);
