@@ -3,9 +3,9 @@
 const environment = require('./envConfig');  
 
 const whitelist = [  
-  environment.FRONTEND_URLS.production,  
-  environment.FRONTEND_URLS.development,  
-  environment.BACKEND_URL  
+  environment.FRONTEND_URLS.production,  // Production URL  
+  environment.FRONTEND_URLS.development, // Development URL  
+  environment.BACKEND_URL  // Ensure this is set in your .env file  
 ].filter(Boolean);  
 
 const corsConfig = {  
