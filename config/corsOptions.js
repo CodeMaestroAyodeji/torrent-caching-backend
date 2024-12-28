@@ -1,16 +1,18 @@
-// config/corsOptions.js
-
-const environment = require('./envConfig');  
-
-const whitelist = [
-  environment.FRONTEND_URLS.production,
-  environment.FRONTEND_URLS.development,
-  environment.BACKEND_URL,
-  'https://btvaultsapp-s72t.vercel.app'  // Add the specific origin that's being blocked
-].filter(Boolean);  
+const whitelist = require('./whitelist');
 
 const corsConfig = {
-  origin: true, // Allow all origins temporarily to debug
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    if (whitelist.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
     'Origin',
@@ -24,6 +26,6 @@ const corsConfig = {
   maxAge: 86400,
   preflightContinue: false,
   optionsSuccessStatus: 204
-};  
+};
 
 module.exports = corsConfig;
