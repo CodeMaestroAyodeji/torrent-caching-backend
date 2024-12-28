@@ -1,6 +1,6 @@
 const whitelist = require('./whitelist');
 
-const corsConfig = {
+const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) {
@@ -19,7 +19,7 @@ const corsConfig = {
   exposedHeaders: ['Content-Length', 'Content-Type'],
   maxAge: 86400,
   preflightContinue: false,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11) choke on 204
 };
 
-module.exports = corsConfig;
+module.exports = corsOptions;
