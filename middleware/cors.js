@@ -1,3 +1,5 @@
+// middleware/cors.js
+
 const handlePreflight = (req, res, next) => {
   if (req.method === 'OPTIONS') {
     return res.status(204).end();

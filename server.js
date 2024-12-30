@@ -3,10 +3,8 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const http = require('http');
-// const { corsMiddleware, handlePreflight } = require('./middleware/cors');
-const corsOptions = require('./config/corsOptions');
 const cors = require('cors');
-// const environment = require('./config/allowedOrigins');
+const corsOptions = require('./config/corsOptions');
 const connectDB = require('./config/db');
 const logger = require('./middleware/logger');
 const { initializeWebSocket } = require('./websocket/websocketServer');
@@ -21,9 +19,6 @@ const paypalRoutes = require('./routes/paypal');
 const paystackRoutes = require('./routes/paystack');
 const flutterwaveRoutes = require('./routes/flutterwave');
 const publicUrl = require('./routes/publicRoutes');
-
-// console.log('Environment:', environment.NODE_ENV);
-// console.log('Frontend URL:', environment.getCurrentFrontendUrl());
 
 // Load environment variables
 dotenv.config();
@@ -50,9 +45,7 @@ connectDB()
     // Test route
     app.get('/', (req, res) => {
       res.json({ 
-        message: 'API is running...',
-        environment: environment.NODE_ENV,
-        frontendUrl: environment.getCurrentFrontendUrl()
+        message: 'API is running...'
       });
     });
 
