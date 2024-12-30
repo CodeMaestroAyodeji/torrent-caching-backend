@@ -1,18 +1,30 @@
-// middleware/cors.js
-
-const cors = require('cors');
-const corsOptions = require('../config/'); // Adjust this path if necessary
-
-const corsMiddleware = cors(corsOptions);
-
 const handlePreflight = (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*'); // Allow all origins
   if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    return res.status(200).send();
+    return res.status(204).end();
   }
   next();
+};
+
+const corsMiddleware = (req, res, next) => {
+  const origin = req.headers.origin;
+  const corsOptions = require('../config/corsOptions');
+
+  corsOptions.origin(origin, (error, allowed) => {
+    if (error) {
+      res.status(403).json({ message: 'CORS not allowed' });
+      return;
+    }
+
+    if (allowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', corsOptions.methods.join(','));
+      res.setHeader('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(','));
+      res.setHeader('Access-Control-Allow-Credentials', corsOptions.credentials);
+      res.setHeader('Access-Control-Max-Age', corsOptions.maxAge);
+    }
+
+    next();
+  });
 };
 
 module.exports = { corsMiddleware, handlePreflight };

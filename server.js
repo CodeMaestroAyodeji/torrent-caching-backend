@@ -6,7 +6,7 @@ const http = require('http');
 // const { corsMiddleware, handlePreflight } = require('./middleware/cors');
 const corsOptions = require('./config/corsOptions');
 const cors = require('cors');
-const environment = require('./config/envConfig');
+// const environment = require('./config/allowedOrigins');
 const connectDB = require('./config/db');
 const logger = require('./middleware/logger');
 const { initializeWebSocket } = require('./websocket/websocketServer');
@@ -22,8 +22,8 @@ const paystackRoutes = require('./routes/paystack');
 const flutterwaveRoutes = require('./routes/flutterwave');
 const publicUrl = require('./routes/publicRoutes');
 
-console.log('Environment:', environment.NODE_ENV);
-console.log('Frontend URL:', environment.getCurrentFrontendUrl());
+// console.log('Environment:', environment.NODE_ENV);
+// console.log('Frontend URL:', environment.getCurrentFrontendUrl());
 
 // Load environment variables
 dotenv.config();
@@ -41,6 +41,7 @@ connectDB()
     
     // Apply CORS middleware  
     app.use(cors(corsOptions));
+
     
     // Other middleware
     app.use(express.json());
@@ -74,8 +75,8 @@ connectDB()
     WebSocketManager.initialize(server);
     initializeWebSocket(server);
 
-    server.listen(environment.PORT, () => {
-      console.log(`Server running in ${environment.NODE_ENV} mode on port ${environment.PORT}`);
+    server.listen(process.env.PORT, () => {
+      console.log(`Server running in ${process.env.NODE_ENV}`);
     });
   })
   .catch((error) => {
