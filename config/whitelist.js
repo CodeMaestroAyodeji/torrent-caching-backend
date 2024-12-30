@@ -1,3 +1,5 @@
+// config/whitelist.js
+
 // Manage allowed origins
 const environment = require('./envConfig');
 

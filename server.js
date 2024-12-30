@@ -3,7 +3,9 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const http = require('http');
-const { corsMiddleware, handlePreflight } = require('./middleware/cors');
+// const { corsMiddleware, handlePreflight } = require('./middleware/cors');
+const corsOptions = require('./config/corsOptions');
+const cors = require('cors');
 const environment = require('./config/envConfig');
 const connectDB = require('./config/db');
 const logger = require('./middleware/logger');
@@ -18,7 +20,7 @@ const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const paypalRoutes = require('./routes/paypal');
 const paystackRoutes = require('./routes/paystack');
 const flutterwaveRoutes = require('./routes/flutterwave');
-const publicUrl = require('./routes/public');
+const publicUrl = require('./routes/publicRoutes');
 
 console.log('Environment:', environment.NODE_ENV);
 console.log('Frontend URL:', environment.getCurrentFrontendUrl());
@@ -37,9 +39,8 @@ connectDB()
     const app = express();
     const server = http.createServer(app);
     
-    // Apply CORS middleware first
-    app.use(corsMiddleware);
-    app.use(handlePreflight);
+    // Apply CORS middleware  
+    app.use(cors(corsOptions));
     
     // Other middleware
     app.use(express.json());
@@ -64,7 +65,7 @@ connectDB()
     app.use('/api/paystack', paystackRoutes);
     app.use('/api/flutterwave', flutterwaveRoutes);
     app.use('/api/users/', userProfileRoutes);
-    app.use('/api/', publicUrl);
+    app.use('/api', publicUrl);
 
     // Error handling middleware
     app.use(errorHandler);

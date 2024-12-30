@@ -1,3 +1,5 @@
+// middleware/cors.js
+
 const cors = require('cors');
 const corsOptions = require('../config/'); // Adjust this path if necessary
 
