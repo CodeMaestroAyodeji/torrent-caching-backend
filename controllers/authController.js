@@ -37,7 +37,7 @@ exports.registerAdmin = async (req, res) => {
     await user.save();  
 
     const token = generateToken(user._id);
-    const verificationLink = `${process.env.FRONTEND_DEV_URL}/verify-email?token=${token}`;  
+    const verificationLink = `${process.env.FRONTEND_PROD_URL}/verify-email?token=${token}`;  
 
     const emailContent = registrationEmail(user.name, verificationLink);  
     await sendEmail(user.email, 'Verify Your Email', emailContent);  
@@ -64,7 +64,7 @@ exports.register = async (req, res) => {
     await user.save();  
 
     const token = generateToken(user._id);  
-    const verificationLink = `${process.env.FRONTEND_DEV_URL}/verify-email?token=${token}`; // Ensure BASE_URL is set correctly in .env  
+    const verificationLink = `${process.env.FRONTEND_PROD_URL}/verify-email?token=${token}`; // Ensure BASE_URL is set correctly in .env  
 
     const emailContent = registrationEmail(user.name, verificationLink);  
     await sendEmail(user.email, 'Verify Your Email', emailContent);  
@@ -144,7 +144,7 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     // Define the reset link
-    const resetLink = `${process.env.FRONTEND_DEV_URL}/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.FRONTEND_PROD_URL}/reset-password?token=${resetToken}`;
 
     // Pass the reset link to the email content function
     const emailContent = passwordResetEmail(user.name, resetLink);  
