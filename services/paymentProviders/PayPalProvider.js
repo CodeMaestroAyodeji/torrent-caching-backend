@@ -5,7 +5,7 @@ const paypal = require('@paypal/checkout-server-sdk');
 class PayPalProvider {
   constructor() {
     const clientId = process.env.PAYPAL_CLIENT_ID;
-    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+    const clientSecret = process.env.PAYPAL_SECRET;
     
     if (!clientId || !clientSecret) {
       throw new Error('PayPal credentials are not configured');

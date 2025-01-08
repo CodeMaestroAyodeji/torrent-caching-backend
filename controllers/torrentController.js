@@ -56,40 +56,40 @@ exports.searchTorrents = async (req, res) => {
 };
 
 
-exports.addMagnetLink = async (req, res) => {  
-    const { magnetLink } = req.body;  
+exports.addMagnetLink = async (req, res) => {
+    const { magnetLink } = req.body;
 
-    try {  
-        if (!magnetLink?.startsWith('magnet:?xt=urn:btih:')) {  
-            return res.status(400).json({ error: 'Invalid magnet link' });  
-        }  
+    try {
+        if (!magnetLink?.startsWith('magnet:?xt=urn:btih:')) {
+            return res.status(400).json({ error: 'Invalid magnet link' });
+        }
 
         // Start the download and get torrent info including size  
-        const torrent = await DownloadManager.startDownload(magnetLink, req.user.id);  
-        
+        const torrent = await DownloadManager.startDownload(magnetLink, req.user.id);
+
         // Assuming `torrent` has a size attribute and we can format it if needed  
         const formattedSize = formatFileSize(torrent.size); // Format the size if needed  
 
         // Save the torrent to the database  
-        const newTorrent = new Torrent({  
-            user: req.user.id,  
-            magnetLink: magnetLink,  
-            size: torrent.size,  
-            formattedSize: formattedSize,  
+        const newTorrent = new Torrent({
+            user: req.user.id,
+            magnetLink: magnetLink,
+            size: torrent.size,
+            formattedSize: formattedSize,
             // Set other fields as needed  
-        });  
+        });
 
-        await newTorrent.save();  
+        await newTorrent.save();
 
-        return res.status(201).json({   
-            success: true,   
-            message: 'Download started',  
+        return res.status(201).json({
+            success: true,
+            message: 'Download started',
             torrent: newTorrent // Return the saved torrent  
-        });  
-    } catch (error) {  
-        console.error('Magnet link error:', error);  
-        return res.status(500).json({ error: error.message });  
-    }  
+        });
+    } catch (error) {
+        console.error('Magnet link error:', error);
+        return res.status(500).json({ error: error.message });
+    }
 };
 
 // Upload File
