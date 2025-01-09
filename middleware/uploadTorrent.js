@@ -1,26 +1,6 @@
 // middleware/uploadTorrent.js
 
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    try {
-      const uploadDir = path.join(__dirname, '../storage/torrents/');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      cb(null, uploadDir);
-    } catch (error) {
-      cb(new Error('Failed to create upload directory'));
-    }
-  },
-  filename: (req, file, cb) => {
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-    cb(null, `${Date.now()}-${safeName}`);
-  },
-});
 
 const fileFilter = (req, file, cb) => {
   // Check both mimetype and file extension
@@ -34,10 +14,10 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(), // Use memory storage instead of disk
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
-}).single('torrentFile'); // Move single() here
+}).single('torrentFile');
 
 // Create error handling middleware
 const uploadMiddleware = (req, res, next) => {

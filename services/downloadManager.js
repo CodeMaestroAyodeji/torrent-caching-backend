@@ -5,30 +5,30 @@ const Torrent = require('../models/Torrent');
 const WebSocketManager = require('./webSocketManager');
 const TorrentEventHandler = require('../utils/torrentEventHandler');
 const formatFileSize = require('../utils/formatters');
-const { uploadFileToB2 } = require('../utils/backblaze'); 
 
 
 class DownloadManager {  
-    static async startDownload(magnetLink, userId) {  
-        const client = TorrentClient.getClient();  
+    static async startDownload(magnetLink, userId) {
+    const client = TorrentClient.getClient();
 
-        const torrentInfo = {  
-            user: userId,  
-            magnetLink,  
-            fileName: [],  
-            size: 0,  
-            formattedSize: '0.00B',  
-            leechers: 0,  
-            seeders: 0,  
-            progress: 0,  
-            status: 'queued'  
-        };  
+    const torrentInfo = {
+        user: userId,
+        magnetLink,
+        fileName: [],
+        size: 0,                    // Initialize with 0
+        formattedSize: '0.00B',     // Initialize with default formatted size
+        leechers: 0,
+        seeders: 0,
+        progress: 0,
+        status: 'queued'
+    };
 
-        const torrentDoc = new Torrent(torrentInfo);  
-        await torrentDoc.save();  
+    const torrentDoc = new Torrent(torrentInfo);
+    await torrentDoc.save();
+  
 
         return new Promise((resolve, reject) => {  
-            const torrent = client.add(magnetLink, { path: './downloads' }); // Temporary path for WebTorrent  
+            const torrent = client.add(magnetLink, { path: './downloads' });  
             let lastProgress = 0;  
 
             torrent.on('metadata', async () => {  
@@ -40,21 +40,6 @@ class DownloadManager {
             });  
 
             torrent.on('done', async () => {  
-                // Once download is done, upload to Backblaze  
-                try {  
-                    const files = torrent.files; // Get the downloaded files  
-                    for (const file of files) {  
-                        const filePath = file.path; // Temporary path  
-                        const fileName = file.name; // Get the original file name  
-                        await uploadFileToB2(filePath, fileName); // Upload to Backblaze  
-                    }  
-                } catch (uploadError) {  
-                    console.error('Error uploading file to Backblaze:', uploadError);  
-                    await TorrentEventHandler.handleError(uploadError, torrentDoc, userId);  
-                    reject(uploadError);  
-                    return;  
-                }  
-
                 await TorrentEventHandler.handleComplete(torrent, torrentDoc, userId);  
                 client.remove(torrent.infoHash, { destroyStore: false });  
                 resolve(torrentDoc);  

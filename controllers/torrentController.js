@@ -56,59 +56,18 @@ exports.searchTorrents = async (req, res) => {
 };
 
 
-exports.addMagnetLink = async (req, res) => {
-    const { magnetLink } = req.body;
-
-    try {
-        if (!magnetLink?.startsWith('magnet:?xt=urn:btih:')) {
-            return res.status(400).json({ error: 'Invalid magnet link' });
-        }
-
-        // Start the download and get torrent info including size  
-        const torrent = await DownloadManager.startDownload(magnetLink, req.user.id);
-
-        // Assuming `torrent` has a size attribute and we can format it if needed  
-        const formattedSize = formatFileSize(torrent.size); // Format the size if needed  
-
-        // Save the torrent to the database  
-        const newTorrent = new Torrent({
-            user: req.user.id,
-            magnetLink: magnetLink,
-            size: torrent.size,
-            formattedSize: formattedSize,
-            // Set other fields as needed  
-        });
-
-        await newTorrent.save();
-
-        return res.status(201).json({
-            success: true,
-            message: 'Download started',
-            torrent: newTorrent // Return the saved torrent  
-        });
-    } catch (error) {
-        console.error('Magnet link error:', error);
-        return res.status(500).json({ error: error.message });
-    }
-};
-
-// Upload File
-
+// Upload Torrent File Handler
 exports.uploadTorrentFile = async (req, res) => {  
     if (!req.file) {  
         return res.status(400).json({   
-            error: true,  
-            message: 'No torrent file uploaded'   
+            success: false,  
+            message: 'Please select a file to upload'   
         });  
     }  
 
     try {  
-        // Verify file exists before reading  
-        if (!fs.existsSync(req.file.path)) {  
-            throw new Error('Upload file not found');  
-        }  
-
-        const fileBuffer = fs.readFileSync(req.file.path);  
+        // Use buffer directly from memory storage
+        const fileBuffer = req.file.buffer;
         
         // Verify valid torrent file  
         let torrentData;  
@@ -119,42 +78,120 @@ exports.uploadTorrentFile = async (req, res) => {
         }  
 
         const magnetLink = `magnet:?xt=urn:btih:${torrentData.infoHash}`;  
+        const size = torrentData.length;
+        const formattedSize = formatFileSize(size);
 
-        // Extract size and compute formattedSize  
-        const size = torrentData.length; // Get the size from parsed torrent data  
-        const formattedSize = formatFileSize(size); // Use the format function to get a human readable size  
-    
-        // Start download with updated size  
-        const torrent = await DownloadManager.startDownload(magnetLink, req.user.id, size, formattedSize);  
+        // Upload to B2 using buffer
+        const uploadResponse = await uploadFileToB2(fileBuffer, req.file.originalname);
         
-        // Upload to B2  
-        try {  
-            const uploadResponse = await uploadFileToB2(req.file.path, req.file.originalname);  
-            await Torrent.findByIdAndUpdate(torrent._id, {  
-                filePath: uploadResponse.fileName  
-            });  
-        } catch (uploadError) {  
-            console.error('B2 upload error:', uploadError);  
-            // Continue even if B2 upload fails  
-        }  
+        if (!uploadResponse || !uploadResponse.fileName) {
+            throw new Error('Failed to upload file to Backblaze');
+        }
 
-        return res.status(201).json({  
-            success: true,  
-            message: 'Torrent upload successful',  
-            torrent  
-        });  
-    } catch (error) {  
-        console.error('Torrent upload error:', error);  
+        // Create initial torrent record
+        const torrent = new Torrent({
+            user: req.user.id,
+            magnetLink,
+            size,
+            formattedSize,
+            filePath: uploadResponse.fileName,
+            status: 'queued'
+        });
+        await torrent.save();
+
+        // Send response immediately
+        res.status(201).json({
+            success: true,
+            message: 'File uploaded successfully',
+            data: {
+                torrentId: torrent._id,
+                fileName: uploadResponse.fileName,
+                size: formattedSize
+            }
+        });
+
+        // Start download process after sending response
+        DownloadManager.startDownload(magnetLink, req.user.id)
+            .catch(error => console.error('Download error:', error));
+
+    } catch (error) {
+        console.error('Torrent upload error:', error);
         return res.status(500).json({   
-            error: true,  
+            success: false,  
             message: error.message || 'Failed to process torrent file'   
         });  
-    } finally {  
-        // Cleanup  
-        if (req.file?.path) {  
-            fs.unlink(req.file.path, err => {  
-                if (err) console.error('Cleanup error:', err);  
+    }
+};
+
+exports.addMagnetLink = async (req, res) => {  
+    const { magnetLink } = req.body;  
+
+    try {  
+        if (!magnetLink?.trim()) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'Please enter a magnet link' 
+            });  
+        }
+
+        if (!magnetLink?.startsWith('magnet:?xt=urn:btih:')) {  
+            return res.status(400).json({ 
+                success: false,
+                message: 'Invalid magnet link format' 
             });  
         }  
+
+        // Create initial torrent record with default size values
+        const torrent = new Torrent({
+            user: req.user.id,
+            magnetLink,
+            size: 0,
+            formattedSize: '0 B',
+            status: 'queued'
+        });
+        await torrent.save();
+
+        // Send response immediately
+        res.status(201).json({   
+            success: true,   
+            message: 'Magnet link added successfully',
+            data: {
+                torrentId: torrent._id,
+                magnetLink
+            }
+        });  
+
+        // Start download process after sending response
+        DownloadManager.startDownload(magnetLink, req.user.id)
+            .then(async (downloadInfo) => {
+                if (downloadInfo?.size) {
+                    // Get the downloaded file buffer
+                    const fileBuffer = await downloadInfo.getFileBuffer();
+                    
+                    // Upload to B2
+                    const uploadResponse = await uploadFileToB2(
+                        fileBuffer,
+                        `${torrent._id}_${downloadInfo.fileName || 'download'}`
+                    );
+
+                    // Update torrent with size and B2 file path
+                    await Torrent.findByIdAndUpdate(torrent._id, {
+                        size: downloadInfo.size,
+                        formattedSize: formatFileSize(downloadInfo.size),
+                        filePath: uploadResponse.fileName
+                    });
+
+                    // Clean up local downloaded file
+                    await downloadInfo.cleanup();
+                }
+            })
+            .catch(error => console.error('Download error:', error));
+
+    } catch (error) {  
+        console.error('Magnet link error:', error);  
+        return res.status(500).json({ 
+            success: false, 
+            message: error.message || 'Failed to process magnet link'
+        });  
     }  
 };
