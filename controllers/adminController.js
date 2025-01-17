@@ -99,6 +99,8 @@ exports.updatePlan = async (req, res) => {
 // Create a new subscription plan
 exports.createPlan = async (req, res) => {
   try {
+    console.log('Received request body:', req.body); // Log the request body
+
     const { name, prices, duration, limits, features, isActive } = req.body;
 
     // Validate required fields
@@ -110,6 +112,7 @@ exports.createPlan = async (req, res) => {
     if (!prices.usd || !prices.ngn || 
         typeof prices.usd.amount !== 'number' || 
         typeof prices.ngn.amount !== 'number') {
+      console.error('Invalid price structure:', prices);
       return res.status(400).json({ error: 'Invalid price structure' });
     }
 
@@ -130,6 +133,7 @@ exports.createPlan = async (req, res) => {
       plan: newPlan
     });
   } catch (error) {
+    console.error('Error creating plan:', error); // Log the error
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Plan with this name already exists' });
     }
@@ -150,8 +154,10 @@ exports.deletePlan = async (req, res) => {
 };
 
 // Get basic analytics  
+// Get basic analytics  
 exports.getAnalytics = async (req, res) => {  
   try {  
+    const totalAdminUsers = await User.countDocuments({ isAdmin: true });  
     const totalUsers = await User.countDocuments();  
     const premiumUsers = await User.countDocuments({ subscription: 'premium' });  
     const freeUsers = await User.countDocuments({ subscription: 'free' });  
@@ -160,12 +166,22 @@ exports.getAnalytics = async (req, res) => {
     const totalDownloads = await Torrent.countDocuments({ status: 'completed' });  
     const totalActiveSubscriptions = await User.countDocuments({ subscription: { $ne: 'free' } });  
 
+    const storageUsed = await User.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalStorage: { $sum: "$storageUsed" }
+        }
+      }
+    ]);
+
     res.json({  
+      totalAdminUsers,
       totalUsers,  
       premiumUsers,  
       freeUsers,  
       totalTorrents,  
-      storageUsed: totalStorageUsed[0]?.totalSize || 0,  
+      storageUsed: Math.round(totalStorageUsed[0]?.totalSize || 0),
       totalDownloads,  
       totalActiveSubscriptions,  
     });  
